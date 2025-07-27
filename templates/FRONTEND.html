@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WealthWise - Stock Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, #0f2027, #203a43, #2c5364);
+      color: #f3f3f3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 3em;
+      color: #00c9a7;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.2em;
+      color: #f1faee;
+    }
+
+    .container {
+      background-color: rgba(0, 0, 0, 0.3);
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+      justify-content: center;
+    }
+
+    input {
+      flex: 1;
+      padding: 12px 15px;
+      font-size: 1em;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background-color: #fff;
+      color: #000;
+    }
+
+    button {
+      padding: 12px 25px;
+      background: linear-gradient(to right, #00c9a7, #92fe9d);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(to right, #00b894, #55efc4);
+    }
+
+    .stock-info {
+      background-color: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>WealthWise</h1>
+    <p>Stock Price Predictor & Visualiser</p>
+  </div>
+
+  <div class="container">
+    <div class="input-group">
+      <input type="text" id="stockSymbol" placeholder="Enter a stock symbol (e.g. TCS, RELIANCE)">
+      <button onclick="fetchStockData()">Predict</button>
+    </div>
+
+    <div class="stock-info" id="stockDetails">
+      Enter a stock symbol to get predictions.
+    </div>
+
+    <div class="chart-container">
+      <canvas id="stockChart"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let chart;
+
+    async function fetchStockData() {
+      const symbol = document.getElementById('stockSymbol').value.trim().toUpperCase();
+      if (!symbol) {
+        alert('Please enter a stock symbol');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/stock/${symbol}`);
+        const data = await response.json();
+
+        if (data.error) {
+          document.getElementById('stockDetails').innerText = data.error;
+          if (chart) chart.destroy();
+          return;
+        }
+
+        document.getElementById('stockDetails').innerHTML = `
+          <strong>Symbol:</strong> ${data.symbol} <br>
+          <strong>Current Price:</strong> ₹${data.current_price} <br>
+          <strong>Predicted Price (3 months):</strong> ₹${data.predicted_price} <br>
+          <strong>Last Updated:</strong> ${data.last_updated}
+        `;
+
+        const ctx = document.getElementById('stockChart').getContext('2d');
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.historical_dates,
+            datasets: [
+              {
+                label: 'Historical Price',
+                data: data.historical_prices,
+                borderColor: '#00c9a7',
+                backgroundColor: 'rgba(0,201,167,0.2)',
+                fill: true,
+              },
+              {
+                label: 'Predicted Price',
+                data: Array(data.historical_dates.length - 1).fill(null).concat(data.predicted_price),
+                borderColor: '#ffe66d',
+                backgroundColor: 'rgba(255,230,109,0.2)',
+                fill: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                ticks: { color: '#f3f3f3' },
+                grid: { color: 'rgba(255,255,255,0.1)' }
+              },
+              x: {
+                ticks: { color: '#f3f3f3' },
+                grid: { color: 'rgba(255,255,255,0.1)' }
+              }
+            },
+            plugins: {
+              legend: {
+                labels: { color: '#f3f3f3' }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        document.getElementById('stockDetails').innerText = 'Failed to fetch stock data.';
+        if (chart) chart.destroy();
+      }
+    }
+  </script>
+</body>
+</html>
+
